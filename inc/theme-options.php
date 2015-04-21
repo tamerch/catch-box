@@ -22,6 +22,14 @@ function catchbox_admin_enqueue_scripts( $hook_suffix ) {
 	wp_enqueue_style( 'farbtastic' );
 	wp_enqueue_script( 'catchbox_upload', get_template_directory_uri().'/inc/add_image_scripts.js', array( 'jquery','media-upload','thickbox' ) );
 	wp_enqueue_style( 'thickbox' );
+	
+	// script for image picker
+	wp_enqueue_media();
+	wp_enqueue_script( 'slider-image', get_template_directory_uri().'/inc/slider-image.js', array( 'jquery', 'media-upload', 'media-views' ));
+	wp_localize_script( 'slider-image', 'TribeImageWidget', array(
+		'frame_title' => __( 'Select an Image', 'catchbox' ),
+		'button_title' => __( 'Define Image as Slider', 'catchbox' ),
+	));
 }
 add_action( 'admin_print_styles-appearance_page_theme_options', 'catchbox_admin_enqueue_scripts' );
 
@@ -632,6 +640,18 @@ function catchbox_settings_field_content_scheme() {
 	}
 }
 
+function wp_gear_manager_admin_scripts() {
+wp_enqueue_script('media-upload');
+wp_enqueue_script('thickbox');
+wp_enqueue_script('jquery');
+}
+
+function wp_gear_manager_admin_styles() {
+wp_enqueue_style('thickbox');
+}
+
+add_action('admin_print_scripts', 'wp_gear_manager_admin_scripts');
+add_action('admin_print_styles', 'wp_gear_manager_admin_styles');
 
 /**
  * Returns the options array for Catch Box.
@@ -701,7 +721,7 @@ function catchbox_theme_options_render_page() {
                         </form>
                   	</div><!-- .option-container -->
              	</div> <!-- #themeoptions --> 
-                
+            
                 <!-- Option for Featured Post Slider -->
                 <div id="slidersettings">
                		<form method="post" action="options.php">
@@ -716,41 +736,96 @@ function catchbox_theme_options_render_page() {
                         <div class="option-container">
                             <h3 class="option-toggle"><a href="#"><?php _e( 'Slider Options', 'catchbox' ); ?></a></h3>
                             <div class="option-content inside">
-                                <table class="form-table">   
-									<input type='text' class='media-input'/><button class='media-button'>Select image</button>
-									
-                                    <tr>                            
-                                        <th scope="row"><?php _e( 'Exclude Slider post from Home page posts:', 'catchbox' ); ?></th>
-                                        <input type='hidden' value='0' name='catchbox_options_slider[exclude_slider_post]'>
-                                        <td><input type="checkbox" id="headerlogo" name="catchbox_options_slider[exclude_slider_post]" value="1" <?php isset($options['exclude_slider_post']) ? checked( '1', $options['exclude_slider_post'] ) : checked('0', '1'); ?> /> <?php _e( 'Check to disable', 'catchbox' ); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <th scope="row"><?php _e( 'Number of Slides', 'catchbox' ); ?></th>
-                                        <td><input type="text" name="catchbox_options_slider[slider_qty]" value="<?php if ( array_key_exists ( 'slider_qty', $options ) ) echo intval( $options[ 'slider_qty' ] ); ?>" /></td>
-                                    </tr>
-                                    <tbody class="sortable">
-										<th></th><th>ID</th><th>Title</th><th>Description</th><th>Link</th><th>Modify</th>
-                                        <?php for ( $i = 1; $i <= $options[ 'slider_qty' ]; $i++ ): ?>
-										<tr>
-										<th scope="row"><label class="handle"><span class="count"><?php echo '#' . absint( $i ); ?></span> <?php _e( 'Featured Post ID', 'catchbox' ); ?></label></th>
-										<td><input type="text" name="catchbox_options_slider[featured_slider][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider', $options ) && array_key_exists( $i, $options[ 'featured_slider' ] ) ) echo absint( $options[ 'featured_slider' ][ $i ] ); ?>" />
-                                        </td><td><input type="text" name="catchbox_options_slider[featured_slider_title][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider_title', $options ) && array_key_exists( $i, $options[ 'featured_slider_title' ] ) ) echo  $options[ 'featured_slider_title' ][ $i ] ; ?>" />
-										</td><td><input type="text" name="catchbox_options_slider[featured_slider_desc][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider_desc', $options ) && array_key_exists( $i, $options[ 'featured_slider_desc' ] ) ) echo  $options[ 'featured_slider_desc' ][ $i ] ; ?>" />
-										</td><td><input type="text" name="catchbox_options_slider[featured_slider_link][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider_link', $options ) && array_key_exists( $i, $options[ 'featured_slider_link' ] ) ) echo  $options[ 'featured_slider_link' ][ $i ] ; ?>" />
-										</td><td><a href="<?php bloginfo ( 'url' );?>/wp-admin/post.php?post=<?php if( array_key_exists ( 'featured_slider', $options ) && array_key_exists ( $i, $options[ 'featured_slider' ] ) ) echo absint( $options[ 'featured_slider' ][ $i ] ); ?>&action=edit" class="button" title="<?php esc_attr_e('Click Here To Edit'); ?>" target="_blank"><?php _e( 'Click Here To Edit', 'catchbox' ); ?></a>
-                                        </td>
-                                        </tr> 							
+								<table class="form-table">
+								<tr>
+                                <th scope="row"><?php _e( 'Number of Slides', 'catchbox' ); ?></th>
+                                <td><input type="text" name="catchbox_options_slider[slider_qty]" value="<?php if ( array_key_exists ( 'slider_qty', $options ) ) echo intval( $options[ 'slider_qty' ] ); ?>" />
+								<input type="submit" class="button-primary" value="<?php esc_attr_e( 'OK', 'catchbox' ); ?>" />
+								</td>
+								
+                                </tr>
+								</table>
+<style>
+div.img-uploader {width: 50%;float: left;}
+.img_preview {position: relative;}
+.img_preview img {width: 99%;}
+div.slider-options {width: 48%;float: right;}
+.slider-options label {display: block;}
+.slider-options	input[type="text"] {width: 98%;}
+.slider-options textarea {width: 98%;}
+.slider-options input[name*="featured_slider_link"] {height: 100px;word-break: break-word;}
+span.slider-title {
+  color: white;
+  position: absolute;
+  top: 50%;
+}
+span.slider-excerpt {
+  color: white;
+  position: absolute;
+  bottom: 50%;
+}
+.option-content{
+	padding-bottom: 10px;
+}
+</style>
+
+								<?php for ( $i = 1; $i <= $options[ 'slider_qty' ]; $i++ ): ?>
+											<div class="option-container">
+												<h3 class="option-toggle"><a href="#"><?php echo 'Slider #' . absint( $i ); ?></a></h3>
+												<div class="option-content inside">
+												
+													<!-- under dev-->
+													<div class="img-uploader">
+													<p>
+														<input type="submit" class="button" name="name_test" id="upload_button_<?php echo absint($i);?>" value="<?php _e('Select an Image', 'image_widget'); ?>" onclick="imageSlider.uploader( 'upload_button_<?php echo absint($i);?>', 'featured_slider_<?php echo absint($i);?>'); return false;" />
+														<div class="img_preview" id="img_preview<?php echo absint($i);?>">
+															
+															<span class="slider-title"><?php echo $options[ 'featured_slider_title' ][ $i ]; ?></span>
+															<span class="slider-excerpt"><?php echo $options[ 'featured_slider_desc' ][ $i ]; ?></span>
+															<img  id="featured_slider_<?php echo absint($i);?>_imgpreview" src="<?php echo $options[ 'featured_slider_imgurl' ][ $i ]; ?>">
+														</div>
+														<input type="hidden" id="featured_slider_<?php echo absint($i);?>_imgid" name="catchbox_options_slider[featured_slider_imgid][<?php echo absint($i);?>]" value="<?php echo $options[ 'featured_slider_imgid' ][ $i ]; ?>" />
+														<input type="hidden" id="featured_slider_<?php echo absint($i);?>_imgurl" name="catchbox_options_slider[featured_slider_imgurl][<?php echo absint($i);?>]" value="<?php echo $options[ 'featured_slider_imgurl' ][ $i ]; ?>" />
+													</p>
+													</div>
+													<div class="slider-options">
+														<p><!-- needed for displaying slider : TO BE REMOVED-->
+															<input type="hidden" name="catchbox_options_slider[featured_slider][<?php echo absint( $i ); ?>]" value="<?php echo $i; ?>" />
+														</p>
+														<p>
+															<label for="featured_slider_<?php echo absint($i);?>_title">Title:</label>
+															<input type="text" name="catchbox_options_slider[featured_slider_title][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider_title', $options ) && array_key_exists( $i, $options[ 'featured_slider_title' ] ) ) echo  $options[ 'featured_slider_title' ][ $i ] ; ?>" />
+														</p>
+														
+														<p>
+															<label for="featured_slider_<?php echo absint($i);?>_desc">Caption:</label>
+															<textarea rows="8" id="featured_slider_<?php echo absint($i);?>_desc" name="catchbox_options_slider[featured_slider_desc][<?php echo absint( $i ); ?>]"/><?php if( array_key_exists( 'featured_slider_desc', $options ) && array_key_exists( $i, $options[ 'featured_slider_desc' ] ) ) echo  $options[ 'featured_slider_desc' ][ $i ] ; ?></textarea>
+														</p>
+														<p>
+															<label for="featured_slider_<?php echo absint($i);?>_link">Link:</label>
+															<input type="text" name="catchbox_options_slider[featured_slider_link][<?php echo absint( $i ); ?>]" value="<?php if( array_key_exists( 'featured_slider_link', $options ) && array_key_exists( $i, $options[ 'featured_slider_link' ] ) ) echo  $options[ 'featured_slider_link' ][ $i ] ; ?>" />
+														</p>
+														
+														<p class="submit"><input id="featured_slider_<?php echo absint($i);?>_savebtn" type="submit" class="button-primary" onclick="imageSlider.saveData( '<?php echo absint($i);?>', 'featured_slider_<?php echo absint($i);?>'); return false;" value="<?php esc_attr_e( 'Save', 'catchbox' ); ?>"/></p> 
+														<!-- END under dev-->
+													</div>
+												</div>
+											</div>					
                                         <?php endfor; ?>
-                                    </tbody>
-                                </table>
-                                <p><?php _e( '<strong>Note</strong>: Here you add in Post IDs which displays on Homepage Featured Slider.', 'catchbox' ); ?> </p>
-                                <p class="submit"><input type="submit" class="button-primary" value="<?php esc_attr_e( 'Save', 'catchbox' ); ?>" /></p> 
+										<!-- probably not necessary (replaced submit by hidden) : TO BE REMOVED-->
+										<p><input id="" type="hidden" class="button-primary" value="<?php esc_attr_e( 'Save', 'catchbox' ); ?>" /></p>  
                             </div><!-- .option-content -->
+							
                         </div><!-- .option-container -->   
                         <div class="option-container">
                             <h3 class="option-toggle"><a href="#"><?php _e( 'Slider Effect Options', 'catchbox' ); ?></a></h3>
                             <div class="option-content inside">
-                                <table class="form-table">   
+                                <table class="form-table">
+									<tr>                            
+                                        <th scope="row"><?php _e( 'Exclude Slider post from Home page posts:', 'catchbox' ); ?></th>
+                                        <input type='hidden' value='0' name='catchbox_options_slider[exclude_slider_post]'>
+                                        <td><input type="checkbox" id="headerlogo" name="catchbox_options_slider[exclude_slider_post]" value="1" <?php isset($options['exclude_slider_post']) ? checked( '1', $options['exclude_slider_post'] ) : checked('0', '1'); ?> /> <?php _e( 'Check to disable', 'catchbox' ); ?></td>
+                                    </tr>
                                     <tr>
                                         <th>
                                         <label for="catchbox_cycle_style"><?php _e( 'Transition Effect:', 'catchbox' ); ?></label>
@@ -977,6 +1052,32 @@ function catchbox_theme_options_render_page() {
  *
  * @since Catch Box 1.0
  */
+ //AJAX TESTINTG
+		
+add_action( 'wp_ajax_saveData', 'saveData_callback' );
+function saveData_callback() {
+	global $wpdb; // this is how you get access to the database
+	settings_fields( 'catchbox_options_slider' );
+    $options = get_option( 'catchbox_options_slider' );
+	
+	$options_validated = array();
+	
+	$slider_id =  $_POST['slider_id'];
+	$slider_imgid = $_POST['imgid'];
+	$slider_imgurl = $_POST['imgurl'];
+	
+
+	$options[ 'featured_slider_imgid' ][ $slider_id ] = $slider_imgid;
+	$options[ 'featured_slider_imgurl' ][ $slider_id ] = $slider_imgurl;
+	$options[ 'featured_slider' ][ $slider_id ] = absint(1);
+	$error = 1;
+	//print_r($options);
+	//print_r($slider_id);
+	return update_option('catchbox_options_slider',$options);
+
+	wp_die(); // this is required to terminate immediately and return a proper response
+}
+
 function catchbox_options_validation($options) {
 	$options_validated = array();
 	//data validation for Featured Slider
@@ -990,7 +1091,9 @@ function catchbox_options_validation($options) {
  	if( isset( $options[ 'slider_qty' ] ) )	
 	for ( $i = 1; $i <= $options [ 'slider_qty' ]; $i++ ) {
 		if ( absint( $options[ 'featured_slider' ][ $i ] ) ) 
-			$options_validated[ 'featured_slider' ][ $i ] = absint($options[ 'featured_slider' ][ $i ] );
+			$options_validated[ 'featured_slider' ][ $i ] = absint(1);
+			$options_validated[ 'featured_slider_imgid' ][ $i ] = absint($options[ 'featured_slider_imgid' ][ $i ] );
+			$options_validated[ 'featured_slider_imgurl' ][ $i ] = $options[ 'featured_slider_imgurl' ][ $i ];
 			$options_validated[ 'featured_slider_title' ][ $i ] = $options[ 'featured_slider_title' ][ $i ];
 			$options_validated[ 'featured_slider_desc' ][ $i ] = $options[ 'featured_slider_desc' ][ $i ];
 			$options_validated[ 'featured_slider_link' ][ $i ] = $options[ 'featured_slider_link' ][ $i ];
