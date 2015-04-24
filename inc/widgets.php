@@ -43,7 +43,7 @@ class catchbox_adwidget extends WP_Widget {
                 <label for="<?php echo $this->get_field_id('adcode'); ?>"><?php _e('Ad Code:','catchbox'); ?></label>
                 <textarea name="<?php echo $this->get_field_name('adcode'); ?>" class="widefat" id="<?php echo $this->get_field_id('adcode'); ?>"><?php echo $adcode; ?></textarea>
             </p>
-            <p><strong>optionaly</strong></p>
+            <p><strong>or</strong></p>
         <?php endif; ?>
         <p>
             <label for="<?php echo $this->get_field_id('image'); ?>"><?php _e('Image Url:','catchbox'); ?></label>
@@ -99,11 +99,17 @@ class catchbox_adwidget extends WP_Widget {
 
 			
 		echo $before_widget;
-		?><a href="<?php echo $href; ?>">
-				<div class="adwidget-title"><?php echo $title?></div>
-				<div class="adwidget-adcode"><?php echo $adcode?></div>
-				<div class="adwidget-img"><img src="<?php echo $image; ?>" alt="<?php echo $alt; ?>" /></div>
-			</a><?php
+		if ( $title != '' ) {
+			echo $before_title . apply_filters( 'widget_title', $title, $instance, $this->id_base ) . $after_title;
+		} else {
+			echo '<span class="paddingtop"></span>';
+		}
+
+		if ( $adcode != '' ) {
+			echo $adcode;
+		} else {
+			?><a href="<?php echo $href; ?>"><img src="<?php echo $image; ?>" alt="<?php echo $alt; ?>" /></a><?php
+		}
 		echo $after_widget;
 	}
 
